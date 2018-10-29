@@ -1,2 +1,0 @@
-# HeadHunter
-HeadHunter database parser
