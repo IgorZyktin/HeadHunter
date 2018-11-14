@@ -1,26 +1,10 @@
+# -*- coding: utf-8 -*-
 """
 
     Модуль обработки HTML
 
 """
-
-
-def vacancy_to_short_html(vacancy):
-    """
-    Генерация короткой строки данных о вакансии
-    """
-    html = f""" 
-    <div class="vacancy_short">
-    <button class="button button1" onclick="openbox({vacancy.id}); return false">Подробности</button>
-    <b>{vacancy.id}</b>: {vacancy.salary} <a href="{vacancy.url}">{vacancy.name}</a>
-    <div id="{vacancy.id}" style="display:none;" class="descr">
-    {vacancy.requirement}
-    
-    {vacancy.responsibility}
-    <br>
-    </div></div>
-    """
-    return list(html)
+import operator
 
 
 def short_html(vacancies):
@@ -56,9 +40,24 @@ def short_html(vacancies):
     html.extend(header)
     html.extend(header2)
 
-    for vacancy in vacancies:
-        html.extend(vacancy_to_short_html(vacancy))
+    for vacancy in sorted(vacancies.values(), key=operator.attrgetter('salary.avg_salary')):
+        if vacancy.info.description:
+            text = vacancy.info.description
+        else:
+            text = vacancy.info.short
 
+        salary = vacancy.salary.str_salary
+
+        info = f""" 
+        <div class="vacancy_short">
+        <button class="button button1" onclick="openbox({vacancy.id}); return false">Подробности</button>
+        <b>{vacancy.id}</b>: {salary} <a href="{vacancy.url}">{vacancy.name}</a>
+        <div id="{vacancy.id}" style="display:none;" class="descr">
+        {text}
+        <br>
+        </div></div>
+        """
+        html.extend(info)
     html.append('</body>\n')
     html.append('</html>\n')
     return html
