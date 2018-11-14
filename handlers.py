@@ -1,8 +1,10 @@
+# -*- coding: utf-8 -*-
 """
 
     Модуль обработчиков
 
 """
+from collections import namedtuple
 import datetime
 dummy = 'Нет данных'
 
@@ -12,180 +14,203 @@ USD_COURSE = 65.1
 # поправка на 13% подоходного налога
 GROSS_COURSE = 0.87
 
+DateClass = namedtuple('DateClass', ['created_at', 'published_at', 'edited_at'])
+SalaryClass = namedtuple('SalaryClass', ['salary_from', 'salary_to', 'avg_salary', 'str_salary'])
+InfoClass = namedtuple('InfoClass', ['experience', 'key_skills', 'description', 'short'])
+AddressClass = namedtuple('AddressClass', ['city', 'street'])
+EmployerClass = namedtuple('EmployerClass', ['employer_id', 'employer_name',
+                                             'employer_url', 'employer_logo'])
 
-class HandlerLocation:
+
+def handle_location(raw_data):
     """
-
         Обработчик адреса
-
     """
-    def __init__(self, raw_data):
-        self.lat = raw_data.get('lat') or dummy
-        self.lng = raw_data.get('lng') or dummy
-        self.city = raw_data.get('city') or dummy
-        self.metro = HandlerLocation.handle_metro(self, raw_data) or dummy
-        self.street = raw_data.get('street') or dummy
+    city = None
+    street = None
 
-    @property
-    def location(self):
-        return self.metro
+    if 'address' in raw_data:
+        temp = raw_data['address']
 
-    def handle_metro(self, raw_data):
-        result = []
+        if temp is not None and 'city' in temp:
+            if temp['city']:
+                city = temp['city']
 
-        if 'address' in raw_data and raw_data['address']:
-            if 'metro' in raw_data:
-                metro = raw_data.get('metro')
-                if metro:
-                    result.append(metro)
+        if temp is not None and 'street' in temp:
+            if temp['street']:
+                street = temp['street']
 
-            if 'metro_stations' in raw_data['address']:
-                for station in raw_data['address']['metro_stations']:
-                    if 'station_name' in station:
-                        if station['station_name']:
-                            result.append(station['station_name'])
-        self.metro = result
+    return AddressClass(city, street)
 
 
-class HandleSalary:
+def handle_salary(raw_data):
     """
-
         Обработчик зарплаты
-
     """
-    def __init__(self, raw_data):
-        self.salary_from = 0
-        self.salary_to = 0
+    salary_to = None
+    salary_from = None
+    gross = None
+    currency = None
 
-        if raw_data.get('salary'):
-            scale = 1
+    if 'salary' in raw_data:
 
-            currency = raw_data['salary'].get('currency', 'RUR')
+        temp = raw_data['salary']
+        if temp is not None and 'from' in temp:
+            if temp['from']:
+                salary_from = int(temp['from'])
 
-            if currency == 'USD':
-                scale = 1 / USD_COURSE
-            elif currency == 'EUR':
-                scale = 1 / EUR_COURSE
+        if temp is not None and 'to' in temp:
+            if temp['to']:
+                salary_to = int(temp['to'])
 
-            gross = raw_data['salary'].get('gross', False)
+        if temp is not None and 'gross' in temp:
+            if temp['gross']:
+                gross = bool(temp['gross'])
 
-            if gross:
-                scale = scale * GROSS_COURSE
+        if temp is not None and 'currency' in temp:
+            if temp['currency']:
+                currency = temp['currency']
 
-            if raw_data['salary'].get('from'):
-                self.salary_from = int(raw_data['salary']['from'] * scale / 1000)
+    if currency == 'USD':
+        scale = USD_COURSE
+    elif currency == 'EUR':
+        scale = EUR_COURSE
+    elif currency == 'RUR':
+        scale = 1
+    else:
+        # TODO - добавить дополнительные валюты
+        scale = -1
 
-            if raw_data['salary'].get('to'):
-                self.salary_to = int(raw_data['salary']['to'] * scale / 1000)
+    if gross:
+        scale = scale * GROSS_COURSE
 
-    @property
-    def salary(self):
-        if self.salary_from and self.salary_to:
-            return f'{str(self.salary_from)}к-{str(self.salary_to)}к'.center(9)
+    if salary_from:
+        salary_from = int(salary_from * scale)
 
-        elif self.salary_from and not self.salary_to:
-            return f'от {str(self.salary_from)}к'.center(9)
+    if salary_to:
+        salary_to = int(salary_to * scale)
 
-        elif not self.salary_from and self.salary_to:
-            return f'до {str(self.salary_to)}к'.center(9)
-        else:
-            return dummy.center(9)
+    if salary_from and salary_to:
+        str_salary = f'{salary_from//1000}к-{salary_to//1000}к'.center(9)
+        avg_salary = int((salary_from + salary_to) / 2)
 
-    @property
-    def avg_salary(self):
-        if self.salary_from and self.salary_to:
-            return (self.salary_from + self.salary_to) // 2
+    elif salary_from and not salary_to:
+        str_salary = f'от {salary_from//1000}к'.center(9)
+        avg_salary = salary_from
 
-        elif self.salary_from and not self.salary_to:
-            return self.salary_from
+    elif not salary_from and salary_to:
+        str_salary = f'до {salary_to}к'.center(9)
+        avg_salary = salary_to
+    else:
+        str_salary = dummy
+        avg_salary = 0
 
-        elif not self.salary_from and self.salary_to:
-            return self.salary_to
-        else:
-            return 0
+    return SalaryClass(salary_from, salary_to, avg_salary, str_salary)
 
 
-class HandleSnippets:
+def handle_info(raw_data):
     """
-
-        Обработчик сниппетов
-
+        Обработчик основных данных о вакансии
     """
-    def __init__(self, raw_data):
+    description = None
+    experience = None
+    key_skills = None
+    short = ''
 
-        if 'snippet' in raw_data:
+    if 'description' in raw_data:
+        if raw_data['description']:
+            description = raw_data['description']
 
-            if 'requirement' in raw_data['snippet']:
-                self._requirement = raw_data['snippet']['requirement'] or dummy
-            else:
-                self._requirement = dummy
+    if 'experience' in raw_data:
+        if raw_data['experience']:
+            experience = raw_data['experience']
 
-            if 'responsibility' in raw_data['snippet']:
-                self._responsibility = raw_data['snippet']['responsibility'] or dummy
-            else:
-                self._responsibility = dummy
-        else:
-            self._requirement = dummy
-            self._responsibility = dummy
+    if 'key_skills' in raw_data:
+        if raw_data['key_skills']:
+            key_skills = raw_data['key_skills']
 
-    @property
-    def requirement(self):
-        text = self._requirement.replace('<highlighttext>', '')
-        text = text.replace('</highlighttext>', '')
-        return text
+    if 'snippet' in raw_data:
+        snippet = raw_data['snippet']
 
-    @property
-    def responsibility(self):
-        text = self._responsibility.replace('<highlighttext>', '')
-        text = text.replace('</highlighttext>', '')
-        return text
+        if 'requirement' in snippet:
+            if snippet['requirement']:
+                requirement = snippet['requirement'].replace('<highlighttext>', '')
+                short += requirement
+
+        if 'responsibility' in snippet:
+            if snippet['responsibility']:
+                responsibility = snippet['responsibility'].replace('<highlighttext>', '')
+                short += responsibility
+
+    return InfoClass(experience, key_skills, description, short or None)
 
 
-class HandleEmployer:
+def handle_employer(raw_data):
     """
-
         Обработчик работодателя
-
     """
-    def __init__(self, raw_data):
-        if 'employer' in raw_data:
-            self.id = raw_data['employer'].get('id', dummy)
-            self.name = raw_data['employer'].get('name', dummy)
-            self.url = raw_data['employer'].get('alternate_url', dummy)
-            if raw_data['employer'].get('logo_urls'):
-                self.logo = raw_data['employer']['logo_urls'].get('original', dummy)
-            else:
-                self.logo = dummy
-        else:
-            self.url = dummy
-            self.id = dummy
-            self.logo = dummy
-            self.name = dummy
+    employer_id = None
+    employer_name = None
+    employer_url = None
+    employer_logo = None
 
-    @property
-    def employer(self):
-        return self.id + ' ' + self.name + ' ' + self.url
+    if 'employer' in raw_data:
+        employer = raw_data['employer']
+        if 'id' in employer:
+            if employer['id']:
+                employer_id = int(employer['id'])
 
-    @property
-    def logo_url(self):
-        return self.logo
+        if 'name' in employer:
+            if employer['name']:
+                employer_name = employer['name']
+
+        if 'alternate_url' in employer:
+            if employer['alternate_url']:
+                employer_url = employer['alternate_url']
+
+        if 'logo_urls' in employer:
+            if employer['logo_urls']:
+                employer_logo = employer['logo_urls'].get('original')
+
+    return EmployerClass(employer_id, employer_name, employer_url, employer_logo)
 
 
-class HandleDate:
+def handle_date(raw_data):
     """
-
-        Обработчик даты
-
+    Обработчик времени
     """
-    def __init__(self, raw_data):
-        self._date = None
-        if 'published_at' in raw_data:
-            # 2018-11-13T12:41:17+0300
-            raw_date = raw_data['published_at']
-            self._date = datetime.datetime.strptime(raw_date, "%Y-%m-%dT%H:%M:%S+%f")
+    created_at = None
+    if 'created_at' in raw_data:
+        if raw_data['created_at']:
+            temp = raw_data['created_at']
+            created_at = datetime.datetime.strptime(temp, "%Y-%m-%dT%H:%M:%S+%f").timestamp()
 
-    @property
-    def date(self):
-        if self._date:
-            return self._date.strftime("%m/%b/%Y")
-        return dummy
+    published_at = None
+    if 'published_at' in raw_data:
+        if raw_data['published_at']:
+            temp = raw_data['published_at']
+            published_at = datetime.datetime.strptime(temp, "%Y-%m-%dT%H:%M:%S+%f").timestamp()
+
+    edited_at = None
+    if 'edited_at' in raw_data:
+        if raw_data['edited_at']:
+            temp = raw_data['edited_at']
+            edited_at = datetime.datetime.strptime(temp, "%Y-%m-%dT%H:%M:%S+%f").timestamp()
+
+    return DateClass(created_at, published_at, edited_at)
+
+
+def isfloat(string):
+    try:
+        _ = float(string)
+        return True
+    except ValueError:
+        return False
+
+
+def isint(string):
+    try:
+        _ = int(string)
+        return True
+    except ValueError:
+        return False
