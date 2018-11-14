@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import json
 import requests
 import resp
@@ -37,17 +38,8 @@ def _request(method, parameters=None):
         argument = request.json().get("bad_argument")
         if argument:
             resp.save('Неправильный аргумент:' + str(argument), level=3)
-
-    elif status_code == 403:
-        resp.save('Ошибка 403: Не хватает прав доступа', level=3)
-    elif status_code == 404:
-        resp.save('Ошибка 404: Страница не найдена.', level=3)
-    elif status_code == 429:
-        resp.save('Ошибка 429: Превышен лимит просмотров', level=3)
-    elif status_code == 500:
-        resp.save('Ошибка 500: Нет доступа', level=3)
-    elif status_code == 503:
-        resp.save('Ошибка 503: Нет доступа.', level=3)
+    else:
+        resp.save(f'Статус {status_code}: запрос не выполнен', level=3)
     return {}
 
 
@@ -81,16 +73,15 @@ def load_local_vacancies(keyword: str = 'python', area: int = 1):
     Загрузка данных из локальной базы
     """
     resp.save(f'Загрузка данных из локальной базы по запросу {keyword} в зоне {area}', level=1)
-    with open('db\python.json', mode='r', encoding='utf-8') as file:
+    with open(r'db\python.json', mode='r', encoding='utf-8') as file:
         result = json.load(file)
     return result
 
 
-def load_vacancy(vacancy_id):
+def load_vacancy_detailed(vacancy_id):
     """
     Загрузка подробных данных о конкретной вакансии с сайта
     """
     resp.save(f'Запрос подробного описания вакансии {vacancy_id} с сайта hh.ru', level=2)
     result = _request(method=f'https://api.hh.ru/vacancies/{vacancy_id}')
     return result
-
