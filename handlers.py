@@ -2,6 +2,8 @@
 """
 
     Модуль обработчиков
+    Основная проблема - непредсказуемость наличия или отсутствия полей в вакансии
+    Часто вречаются поля с None, пустые поля, поля с пустой строкой или нулём
 
 """
 from collections import namedtuple
@@ -29,6 +31,9 @@ def handle_location(raw_data):
     city = None
     street = None
 
+    if raw_data is None:
+        return AddressClass(None, None)
+
     if 'address' in raw_data:
         temp = raw_data['address']
 
@@ -51,6 +56,9 @@ def handle_salary(raw_data):
     salary_from = None
     gross = None
     currency = None
+
+    if raw_data is None:
+        return SalaryClass(None, None, 0, dummy)
 
     if 'salary' in raw_data:
 
@@ -117,6 +125,9 @@ def handle_info(raw_data):
     key_skills = None
     short = ''
 
+    if raw_data is None:
+        return InfoClass(None, None, None, None)
+
     if 'description' in raw_data:
         if raw_data['description']:
             description = raw_data['description']
@@ -125,11 +136,13 @@ def handle_info(raw_data):
         if raw_data['experience']:
             experience = raw_data['experience']
 
-    if 'key_skills' in raw_data:
-        if raw_data['key_skills']:
-            key_skills = raw_data['key_skills']
+    if 'key_skills' in raw_data and raw_data['key_skills']:
+        raw_key_skills = raw_data['key_skills']
+        if isinstance(raw_key_skills, list):
+            names = [x.get('name', '') for x in raw_key_skills]
+            key_skills = ', '.join(names)
 
-    if 'snippet' in raw_data:
+    if 'snippet' in raw_data and raw_data['snippet']:
         snippet = raw_data['snippet']
 
         if 'requirement' in snippet:
@@ -140,7 +153,7 @@ def handle_info(raw_data):
         if 'responsibility' in snippet:
             if snippet['responsibility']:
                 responsibility = snippet['responsibility'].replace('<highlighttext>', '')
-                short += responsibility
+                short += ' ' + responsibility
 
     return InfoClass(experience, key_skills, description, short or None)
 
@@ -154,22 +167,25 @@ def handle_employer(raw_data):
     employer_url = None
     employer_logo = None
 
+    if raw_data is None:
+        return EmployerClass(None, None, None, None)
+
     if 'employer' in raw_data:
         employer = raw_data['employer']
-        if 'id' in employer:
+        if employer and 'id' in employer:
             if employer['id']:
                 employer_id = int(employer['id'])
 
-        if 'name' in employer:
+        if employer and 'name' in employer:
             if employer['name']:
                 employer_name = employer['name']
 
-        if 'alternate_url' in employer:
+        if employer and 'alternate_url' in employer:
             if employer['alternate_url']:
                 employer_url = employer['alternate_url']
 
-        if 'logo_urls' in employer:
-            if employer['logo_urls']:
+        if employer and 'logo_urls' in employer:
+            if isinstance(employer['logo_urls'], dict):
                 employer_logo = employer['logo_urls'].get('original')
 
     return EmployerClass(employer_id, employer_name, employer_url, employer_logo)
@@ -179,6 +195,9 @@ def handle_date(raw_data):
     """
     Обработчик времени
     """
+    if raw_data is None:
+        return DateClass(None, None, None)
+
     created_at = None
     if 'created_at' in raw_data:
         if raw_data['created_at']:
@@ -200,17 +219,3 @@ def handle_date(raw_data):
     return DateClass(created_at, published_at, edited_at)
 
 
-def isfloat(string):
-    try:
-        _ = float(string)
-        return True
-    except ValueError:
-        return False
-
-
-def isint(string):
-    try:
-        _ = int(string)
-        return True
-    except ValueError:
-        return False
