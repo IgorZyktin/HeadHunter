@@ -1,18 +1,18 @@
 # -*- coding: utf-8 -*-
 import json
 import requests
-import resp
-
-LOCAL_MODE = True
+import responds
 
 
-def get_data(keyword: str, area: int):
+def get_data(keyword: str, area: int, local_mode=True):
     """
     Обработчик обращений к данным
     """
-    if LOCAL_MODE:
+    if local_mode:
+        responds.save(f'Загрузка локальных данных по запросу {keyword} в зоне {area}', level=1)
         return load_local_vacancies(keyword, area)
     else:
+        responds.save(f'Загрузка данных из интернета по запросу {keyword} в зоне {area}', level=1)
         return load_remote_vacancies(keyword, area)
 
 
@@ -20,8 +20,6 @@ def _request(method, parameters=None):
     """
     Отправка запроса к API HH.ru
     """
-    resp.save(f'Обращение к API HH. parameters = {parameters}', level=1)
-
     if parameters:
         request = requests.get(method, parameters)
     else:
@@ -34,12 +32,12 @@ def _request(method, parameters=None):
         return request.json()
 
     elif status_code == 400:
-        resp.save(f'Ошибка 400: Некорректный запрос. parameters = {parameters}', level=3)
+        responds.save(f'Ошибка 400: Некорректный запрос. parameters = {parameters}', level=3)
         argument = request.json().get("bad_argument")
         if argument:
-            resp.save('Неправильный аргумент:' + str(argument), level=3)
+            responds.save('Неправильный аргумент:' + str(argument), level=3)
     else:
-        resp.save(f'Статус {status_code}: запрос не выполнен', level=3)
+        responds.save(f'Статус {status_code}: запрос не выполнен', level=3)
     return {}
 
 
@@ -47,9 +45,7 @@ def load_remote_vacancies(keyword: str = 'python', area: int = 1):
     """
     Поисковый запрос на сайте HH.ru
     """
-    resp.save(f'Загрузка данных из интернета по запросу {keyword} в зоне {area}', level=1)
-
-    # по идее должны скачиваться файлы на страницах [0, pages)
+    # по идее должны скачиваться файлы на страницах с 0 по pages
     # но данные последней никак не получается достать (возможно ошибка API)
     per_page = 50   # Вакансий в странице
 
@@ -72,7 +68,7 @@ def load_local_vacancies(keyword: str = 'python', area: int = 1):
     """
     Загрузка данных из локальной базы
     """
-    resp.save(f'Загрузка данных из локальной базы по запросу {keyword} в зоне {area}', level=1)
+
     with open(r'db\python.json', mode='r', encoding='utf-8') as file:
         result = json.load(file)
     return result
@@ -82,6 +78,6 @@ def load_vacancy_detailed(vacancy_id):
     """
     Загрузка подробных данных о конкретной вакансии с сайта
     """
-    resp.save(f'Запрос подробного описания вакансии {vacancy_id} с сайта hh.ru', level=2)
+    responds.save(f'Запрос подробного описания вакансии {vacancy_id} с сайта hh.ru', level=2)
     result = _request(method=f'https://api.hh.ru/vacancies/{vacancy_id}')
     return result
