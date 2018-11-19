@@ -15,11 +15,15 @@ def main():
     """
     raw_data = hh_api.get_data(keyword='python', area=1)
     initial_manager = VacancyManager('initial', raw_data)
-    #VacancyManager.purge_with_words('C++', 'responsibility')
-    #VacancyManager.purge_with_words('C++', 'requirement')
+    initial_manager.purge_with(['C++', 'devops'])
+    initial_manager.purge_by_field(False, 'attr_06_salary_avg_')
     #VacancyManager.show_all()
-    #va = hh_api.load_vacancy_detailed(28427634)
-    database.dump(initial_manager.unfold())
+    #database.dump(initial_manager.unfold())
+    initial_manager.detail_vacancy(28796180)
+    initial_manager.detail_vacancy(28514412)
+    #initial_manager.detail_all()
+    initial_manager.generate_html()
+    #database.drop_db()
 
 
 if __name__ == '__main__':
