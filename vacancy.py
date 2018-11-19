@@ -8,95 +8,104 @@ import handlers
 import hh_api
 import responds
 import hh_html
-import json
 
 
 class Overlord:
     """
     Сборщик данных по созданным экземплярам
     """
-    _memory = {}
+    _managers = {}
 
     @staticmethod
-    def add_manager(manager):
-        Overlord._memory.update({manager.name: manager})
+    def add_manager(name, manager):
+        Overlord._managers.update({name: manager})
 
     @staticmethod
     def enlist_managers():
-        for name, manager in Overlord._memory.items():
+        for name, manager in Overlord._managers.items():
             print(name, manager.total())
+
+    @staticmethod
+    def delete_manager(name):
+        del Overlord._managers[name]
 
 
 class Vacancy:
     """
     Базовый класс вакансии
     """
+    __slots__ = ['attr_01_id__',
+                 'attr_02_name',
+                 'attr_03_url_',
+                 'attr_04_salary_from',
+                 'attr_05_salary_upto',
+                 'attr_06_salary_avg_',
+                 'attr_07_salary_str_',
+                 'attr_08_experience_',
+                 'attr_09_key_skills_',
+                 'attr_10_description',
+                 'attr_11_short_descr',
+                 'attr_12_employer_id__',
+                 'attr_13_employer_url_',
+                 'attr_14_employer_name',
+                 'attr_15_time_created',
+                 'attr_16_time_publish',
+                 'attr_17_time_dbsaved',
+                 'attr_18_addr_city__',
+                 'attr_19_addr_street']
+
     def __init__(self, raw_data):
-        self.id = int(raw_data.get('id'))
-        self.name = raw_data.get('name')
-        self.url = raw_data.get('alternate_url')
+        self.attr_01_id__ = int(raw_data.get('id'))
+        self.attr_02_name = raw_data.get('name')
+        self.attr_03_url_ = raw_data.get('alternate_url')
 
-        # self.raw_data = json.dumps(raw_data, ensure_ascii=False)
+        salary = handlers.handle_salary(raw_data)
+        self.attr_04_salary_from = salary.attr_04_salary_from
+        self.attr_05_salary_upto = salary.attr_05_salary_upto
+        self.attr_06_salary_avg_ = salary.attr_06_salary_avg_
+        self.attr_07_salary_str_ = salary.attr_07_salary_str_
 
-        new_info = handlers.handle_info(raw_data)
-        self.description = new_info.description
-        self.experience = new_info.experience
-        self.key_skills = new_info.key_skills
-        self.short = new_info.short
+        description = handlers.handle_info(raw_data)
+        self.attr_08_experience_ = description.attr_08_experience_
+        self.attr_09_key_skills_ = description.attr_09_key_skills_
+        self.attr_10_description = description.attr_10_description
+        self.attr_11_short_descr = description.attr_11_short_descr
 
-        new_date = handlers.handle_date(raw_data)
-        self.created_at = new_date.created_at
-        self.published_at = new_date.published_at
-        self.edited_at = new_date.edited_at
+        employer = handlers.handle_employer(raw_data)
+        self.attr_12_employer_id__ = employer.attr_12_employer_id__
+        self.attr_13_employer_url_ = employer.attr_13_employer_url_
+        self.attr_14_employer_name = employer.attr_14_employer_name
 
-        new_salary = handlers.handle_salary(raw_data)
-        self.salary_from = new_salary.salary_from
-        self.salary_to = new_salary.salary_to
-        self.avg_salary = new_salary.avg_salary
-        self.str_salary = new_salary.str_salary
+        date = handlers.handle_time(raw_data)
+        self.attr_15_time_created = date.attr_15_time_created
+        self.attr_16_time_publish = date.attr_16_time_publish
+        self.attr_17_time_dbsaved = date.attr_17_time_dbsaved
 
-        new_location = handlers.handle_location(raw_data)
-        self.city = new_location.city
-        self.street = new_location.street
-
-        new_employer = handlers.handle_employer(raw_data)
-        self.employer_id = new_employer.employer_id
-        self.employer_name = new_employer.employer_name
-        self.employer_url = new_employer.employer_url
-        self.employer_logo = new_employer.employer_logo
+        address = handlers.handle_location(raw_data)
+        self.attr_18_addr_city__ = address.attr_18_addr_city__
+        self.attr_19_addr_street = address.attr_19_addr_street
 
     def __str__(self):
-        return f'{self.id} {self.str_salary} {self.name}'
+        return f'{self.attr_01_id__} {self.attr_07_salary_str_} {self.attr_02_name}'
 
     def __repr__(self):
-        return '[VAC] ' + str(self.id)
+        return '[VAC] ' + str(self.attr_01_id__)
 
-    def flatten(self):
+    @staticmethod
+    def attribute_names():
         """
-        Генерация плоского списка из параметров вакансии
+        Выдать перечень атрибутов
         """
-        flat_vacancy = list()
-        flat_vacancy.append(self.id)
-        flat_vacancy.append(self.name)
-        flat_vacancy.append(self.url)
-        flat_vacancy.append(self.description)
-        flat_vacancy.append(self.experience)
-        flat_vacancy.append(self.key_skills)
-        flat_vacancy.append(self.short)
-        flat_vacancy.append(self.cteated_at)
-        flat_vacancy.append(self.published_at)
-        flat_vacancy.append(self.edited_at)
-        flat_vacancy.append(self.salary_from)
-        flat_vacancy.append(self.salary_to)
-        flat_vacancy.append(self.avg_salary)
-        flat_vacancy.append(self.str_salary)
-        flat_vacancy.append(self.city)
-        flat_vacancy.append(self.street)
-        flat_vacancy.append(self.employer_id)
-        flat_vacancy.append(self.employer_name)
-        flat_vacancy.append(self.employer_url)
-        flat_vacancy.append(self.employer_logo)
-        return flat_vacancy
+        return Vacancy.__slots__
+
+    def attribute_values(self):
+        """
+        Выдать значения атрибутов
+        """
+        values = []
+        for attr_name in self.__slots__:
+            values.append(getattr(self, attr_name))
+        return values
 
 
 class VacancyManager:
@@ -116,7 +125,7 @@ class VacancyManager:
 
         text = f'Инициация "{self.name}", {len(raw_vacancies)} вакансий ({duplicates} повт.)'
         responds.save(text, level=3)
-        Overlord.add_manager(self)
+        Overlord.add_manager(name, self)
 
     def __add__(self, other):
         """
@@ -137,10 +146,20 @@ class VacancyManager:
         """
         Генерация нового экземпляра вакансии из json-словаря
         """
-        current_id = int(raw_vacancy.get('id'))
-        if current_id not in self._memory:
-            self._memory[current_id] = Vacancy(raw_vacancy)
-            return 0
+        if not raw_vacancy:
+            text = f'Попытка создать вакансию из ошибочных данных: {raw_vacancy} у менеджера "{self.name}""'
+            responds.save(text, level=3)
+
+        raw_id = raw_vacancy.get('id')
+
+        if raw_id is None:
+            text = f'Отсутствие поля "id" в исходных данных: {raw_vacancy} у менеджера "{self.name}""'
+            responds.save(text, level=3)
+        else:
+            current_id = int(raw_vacancy.get('id'))
+            if current_id not in self._memory:
+                self._memory[current_id] = Vacancy(raw_vacancy)
+                return 0
         return 1
 
     def del_vacancy(self, target_id):
@@ -194,7 +213,8 @@ class VacancyManager:
         Запросить подробности вакансии
         """
         raw_details = hh_api.load_vacancy_detailed(vacancy_id)
-        self._memory[vacancy_id].info = handlers.handle_info(raw_details)
+        self.del_vacancy(vacancy_id)
+        self.add_vacancy(raw_details)
 
     def detail_all(self):
         """
@@ -203,38 +223,65 @@ class VacancyManager:
         for vacancy in self._memory.keys():
             self.detail_vacancy(vacancy)
 
-    def purge_with_words(self, words):
+    def purge_with(self, words, fields=('attr_10_description', 'attr_11_short_descr')):
         """
         Удалить все вакансии, в описании которых есть данные слова
         """
-        text = f'Удаление по наличию ключевых слов "{words}" менеджера "{self.name}"'
-        responds.save(text, level=2)
+        total = 0
         for word in words:
-            for each in self._memory.values():
-                if each.info.description is not None and word in each.info.description:
-                    self.del_vacancy(each.id)
+            for each in list(self._memory.values()):
+                for field in fields:
+                    found = getattr(each, field)
+                    if found:
+                        if word in found:
+                            self.del_vacancy(each.attr_01_id__)
+                            total += 1
 
-                if each.info.short is not None and word in each.info.short:
-                    self.del_vacancy(each.id)
+            responds.save(f'Удал. {total} вак. по наличию ключевого слова "{word}" в менеджере "{self.name}"', level=2)
+        responds.save(f'Вакансий в менеджере "{self.name}" после удаления: {self.total()}', level=2)
 
-    def purge_without_words(self, words):
+    def purge_without(self, words, fields=('attr_10_description', 'attr_11_short_descr')):
         """
         Удалить все вакансии, в описании которых нет данных слов
         """
         text = f'Удаление по отсутствию ключевых слов "{words}" менеджера "{self.name}"'
         responds.save(text, level=2)
+        total = 0
         for word in words:
-            for each in self._memory.values():
-                if each.info.description is not None and word in each.info.description:
-                    self.del_vacancy(each.id)
+            for each in list(self._memory.values()):
+                for field in fields:
+                    found = getattr(each, field)
+                    if found:
+                        if word not in found:
+                            self.del_vacancy(each.attr_01_id__)
+                            total += 1
+            responds.save(f'Удал. {total} вак. по отсутствию ключевого слова "{word}" в менеджере "{self.name}"', level=2)
+        responds.save(f'Вакансий в менеджере "{self.name}" после удаления: {self.total()}', level=2)
 
-                if each.info.short is not None and word in each.info.short:
-                    self.del_vacancy(each.id)
+    def purge_by_field(self, status, field='attr_10_description'):
+        """
+        Удалить все вакансии, в описании которых есть/нет указанного поля
+        """
+        total = 0
+        for each in list(self._memory.values()):
+            found = getattr(each, field)
+            if bool(found) == status:
+                self.del_vacancy(each.attr_01_id__)
+                total += 1
+
+        present = ['наличию', 'отстутствию'][status]
+        text = f'Удаление {total} вакансий по {present} ключевого поля "{field}" в менеджере "{self.name}"'
+        responds.save(text, level=2)
+        if total:
+            responds.save(f'Вакансий в менеджере "{self.name}" после удаления: {self.total()}', level=2)
 
     def total(self):
-        responds.save(f'Общее количество вакансий в выборке: {len(self._memory)}', level=2)
+        """
+        Вернуть суммарное число вакансий в данном менеджере
+        """
+        return len(self._memory)
 
-    def generate_short_html(self):
+    def generate_html(self):
         """
         Генерация упрощённого HTML списка
         """
