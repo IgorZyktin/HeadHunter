@@ -5,56 +5,16 @@
 
 """
 import handlers
-import hh_api
-import responds
-import hh_html
-
-
-class Overlord:
-    """
-    Сборщик данных по созданным экземплярам
-    """
-    _managers = {}
-
-    @staticmethod
-    def add_manager(name, manager):
-        Overlord._managers.update({name: manager})
-
-    @staticmethod
-    def enlist_managers():
-        for name, manager in Overlord._managers.items():
-            print(name, manager.total())
-
-    @staticmethod
-    def delete_manager(name):
-        del Overlord._managers[name]
+import internet
+import html
 
 
 class Vacancy:
     """
     Базовый класс вакансии
     """
-    __slots__ = ['attr_01_id__',
-                 'attr_02_name',
-                 'attr_03_url_',
-                 'attr_04_salary_from',
-                 'attr_05_salary_upto',
-                 'attr_06_salary_avg_',
-                 'attr_07_salary_str_',
-                 'attr_08_experience_',
-                 'attr_09_key_skills_',
-                 'attr_10_description',
-                 'attr_11_short_descr',
-                 'attr_12_employer_id__',
-                 'attr_13_employer_url_',
-                 'attr_14_employer_name',
-                 'attr_15_time_created',
-                 'attr_16_time_publish',
-                 'attr_17_time_dbsaved',
-                 'attr_18_addr_city__',
-                 'attr_19_addr_street']
-
     def __init__(self, raw_data):
+        # генерация из JSON
         self.attr_01_id__ = int(raw_data.get('id'))
         self.attr_02_name = raw_data.get('name')
         self.attr_03_url_ = raw_data.get('alternate_url')
@@ -86,108 +46,53 @@ class Vacancy:
         self.attr_19_addr_street = address.attr_19_addr_street
 
     def __str__(self):
-        return f'{self.attr_01_id__} {self.attr_07_salary_str_} {self.attr_02_name}'
+        return f'[{self.attr_01_id__}] {self.attr_07_salary_str_} {self.attr_02_name}'
 
     def __repr__(self):
-        return '[VAC] ' + str(self.attr_01_id__)
-
-    @staticmethod
-    def attribute_names():
-        """
-        Выдать перечень атрибутов
-        """
-        return Vacancy.__slots__
-
-    def attribute_values(self):
-        """
-        Выдать значения атрибутов
-        """
-        values = []
-        for attr_name in self.__slots__:
-            values.append(getattr(self, attr_name))
-        return values
+        return f'[{self.attr_01_id__}] {self.attr_07_salary_str_} {self.attr_02_name}'
 
 
 class VacancyManager:
     """
     Класс-обработчик для Vacancy
-    Организует взаимодействие остальной программы с классом вакансий
     """
-    def __init__(self, name, raw_vacancies):
+    def __init__(self, keyword, area):
         """
-        Генерация множества экземпляров вакансии из json-словаря
+        Создание пустого менеджера
         """
-        self.name = name
+        self.keyword = keyword
         self._memory = {}
-        duplicates = 0
+        raw_vacancies = internet.load_vacancies(keyword, area)
         for raw_vacancy in raw_vacancies:
-            duplicates += self.add_vacancy(raw_vacancy)
+            self.add_one(raw_vacancy)
 
-        text = f'Инициация "{self.name}", {len(raw_vacancies)} вакансий ({duplicates} повт.)'
-        responds.save(text, level=3)
-        Overlord.add_manager(name, self)
-
-    def __add__(self, other):
+    def add_one(self, raw_vacancy):
         """
-        Суммирование менеджеров с объединением вакансий
+        Генерация нового экземпляра вакансии
         """
-        name = self.name + '+' + other.name
-        source = list({**self.unfold(), **other.unfold()})
-        new_manager = VacancyManager(name=name, raw_vacancies=source)
-        return new_manager
+        if isinstance(raw_vacancy, list):
+            current_id = raw_vacancy[0]
+        else:
+            current_id = raw_vacancy.get('id')
 
-    def unfold(self):
+        try:
+            current_id = int(current_id)
+            if current_id not in self._memory:
+                self._memory[current_id] = Vacancy(raw_vacancy)
+        except TypeError:
+            print('Ошибка для вакансии', current_id)
+
+    def get_memory(self):
         """
         Выдать содержимое памяти
         """
         return self._memory
 
-    def add_vacancy(self, raw_vacancy):
-        """
-        Генерация нового экземпляра вакансии из json-словаря
-        """
-        if not raw_vacancy:
-            text = f'Попытка создать вакансию из ошибочных данных: {raw_vacancy} у менеджера "{self.name}""'
-            responds.save(text, level=3)
-
-        raw_id = raw_vacancy.get('id')
-
-        if raw_id is None:
-            text = f'Отсутствие поля "id" в исходных данных: {raw_vacancy} у менеджера "{self.name}""'
-            responds.save(text, level=3)
-        else:
-            current_id = int(raw_vacancy.get('id'))
-            if current_id not in self._memory:
-                self._memory[current_id] = Vacancy(raw_vacancy)
-                return 0
-        return 1
-
     def del_vacancy(self, target_id):
         """
         Удаление вакансии
         """
-        success = self._memory.pop(target_id, False)
-        if not success:
-            text = f'Попытка удалить несуществующую вакансию {target_id} у менеджера "{self.name}""'
-            responds.save(text, level=3)
-
-    def has_vacancy(self, target_id):
-        """
-        Проверка наличия вакансии
-        """
-        if target_id in self._memory:
-            return True
-        return False
-
-    def get_vacancy(self, target_id):
-        """
-        Получение вакансии
-        """
-        if VacancyManager.has_vacancy(self, target_id):
-            return self._memory[target_id]
-        else:
-            txt = f'Попытка запросить несуществующую вакансию {target_id} у менеджера "{self.name}"'
-            responds.save(txt, level=3)
+        self._memory.pop(target_id)
 
     def demonstrate(self):
         """
@@ -195,38 +100,41 @@ class VacancyManager:
         """
         total = len(self._memory)
         digits = len(str(total))
-        responds.save(f'Вывод вакансий "{self.name}" на экран в кол-ве {total} шт.', level=2)
-        print(f'В памяти находится {total} записей:')
-        for i, each in enumerate(self._memory, start=1):
+        print(f'\tВ памяти находится {total} записей:')
+        for i, each in enumerate(self._memory.values(), start=1):
             num = str(i).rjust(digits, '0')
-            print(f'\t{num}. {each}')
+            print(f'\t\t{num}. {each}')
 
     def erase_memory(self):
         """
         Полная очистка памяти менеджера
         """
-        responds.save(f'Очистка памяти "{self.name}" в количестве {len(self._memory)} шт.', level=3)
         self._memory.clear()
 
     def detail_vacancy(self, vacancy_id):
         """
         Запросить подробности вакансии
         """
-        raw_details = hh_api.load_vacancy_detailed(vacancy_id)
-        self.del_vacancy(vacancy_id)
-        self.add_vacancy(raw_details)
+        raw_detailed = internet.load_detailed(vacancy_id)
+        Vacancy.__init__(self._memory[vacancy_id], raw_detailed)
 
     def detail_all(self):
         """
         Запросить подробности всех вакансий
         """
-        for vacancy in self._memory.keys():
+        print()
+        for i, vacancy in enumerate(self._memory.keys(), start=1):
+            print(f'\r\tЗапрос на детализацию, вакансия {i} из {len(self._memory)}', end='')
             self.detail_vacancy(vacancy)
+        print(f'\r\t{i} шт. вакансий успешно обработано')
+        print()
 
-    def purge_with(self, words, fields=('attr_10_description', 'attr_11_short_descr')):
+    def purge_with(self, words):
         """
         Удалить все вакансии, в описании которых есть данные слова
         """
+        fields = ['attr_08_experience_', 'attr_09_key_skills_',
+                  'attr_10_description', 'attr_11_short_descr']
         total = 0
         for word in words:
             for each in list(self._memory.values()):
@@ -237,15 +145,15 @@ class VacancyManager:
                             self.del_vacancy(each.attr_01_id__)
                             total += 1
 
-            responds.save(f'Удал. {total} вак. по наличию ключевого слова "{word}" в менеджере "{self.name}"', level=2)
-        responds.save(f'Вакансий в менеджере "{self.name}" после удаления: {self.total()}', level=2)
+            print(f'\tУдалено {total} вакансий по наличию ключевого слова "{word}"'
+                  + f' (осталось {self.total()})')
 
-    def purge_without(self, words, fields=('attr_10_description', 'attr_11_short_descr')):
+    def purge_without(self, words: list):
         """
         Удалить все вакансии, в описании которых нет данных слов
         """
-        text = f'Удаление по отсутствию ключевых слов "{words}" менеджера "{self.name}"'
-        responds.save(text, level=2)
+        fields = ['attr_08_experience_', 'attr_09_key_skills_',
+                  'attr_10_description', 'attr_11_short_descr']
         total = 0
         for word in words:
             for each in list(self._memory.values()):
@@ -255,25 +163,8 @@ class VacancyManager:
                         if word not in found:
                             self.del_vacancy(each.attr_01_id__)
                             total += 1
-            responds.save(f'Удал. {total} вак. по отсутствию ключевого слова "{word}" в менеджере "{self.name}"', level=2)
-        responds.save(f'Вакансий в менеджере "{self.name}" после удаления: {self.total()}', level=2)
-
-    def purge_by_field(self, status, field='attr_10_description'):
-        """
-        Удалить все вакансии, в описании которых есть/нет указанного поля
-        """
-        total = 0
-        for each in list(self._memory.values()):
-            found = getattr(each, field)
-            if bool(found) == status:
-                self.del_vacancy(each.attr_01_id__)
-                total += 1
-
-        present = ['наличию', 'отстутствию'][status]
-        text = f'Удаление {total} вакансий по {present} ключевого поля "{field}" в менеджере "{self.name}"'
-        responds.save(text, level=2)
-        if total:
-            responds.save(f'Вакансий в менеджере "{self.name}" после удаления: {self.total()}', level=2)
+            print(f'\tУдалено {total} вакансий по отсутствию ключевого слова "{word}"'
+                  + f' (осталось {self.total()})')
 
     def total(self):
         """
@@ -283,10 +174,11 @@ class VacancyManager:
 
     def generate_html(self):
         """
-        Генерация упрощённого HTML списка
+        Генерация HTML вывода
         """
-        html = hh_html.short_html(self._memory)
+        name = self.keyword + '.html'
+        html_document = html.generate_html(self._memory)
 
-        with open('output.html', mode='w', encoding='utf-8') as file:
-            for line in html:
+        with open(name, mode='w', encoding='utf-8') as file:
+            for line in html_document:
                 file.write(line)
