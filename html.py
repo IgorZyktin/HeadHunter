@@ -7,7 +7,7 @@
 import operator
 
 
-def short_html(vacancies):
+def generate_html(vacancies):
     """
     Генерация файла с короткими описаниями вакансий
     """
@@ -42,11 +42,15 @@ def short_html(vacancies):
     html.extend(header2)
 
     for vacancy in sorted(vacancies.values(), key=operator.attrgetter('attr_06_salary_avg_')):
-
         if vacancy.attr_10_description:
             text = vacancy.attr_10_description
         else:
             text = vacancy.attr_11_short_descr
+
+        if vacancy.attr_08_experience_:
+            experience = vacancy.attr_08_experience_
+        else:
+            experience = ''
 
         vac_id = vacancy.attr_01_id__
         url = vacancy.attr_03_url_
@@ -56,12 +60,12 @@ def short_html(vacancies):
         info = """ 
         <div class="vacancy_short">
         <button class="button button1" onclick="openbox({0}); return false">Подробности</button>
-        <b>{0}</b>: {3} <a href="{1}">{2}</a>
+        <b>[{0}]</b> {5} - {3} <a href="{1}">{2}</a>
         <div id="{0}" style="display:none;" class="descr">
         {4}
         <br>
         </div></div>
-        """.format(vac_id, url, name, salary, text)
+        """.format(vac_id, url, name, salary, text, experience)
         html.extend(info)
     html.append('</body>\n')
     html.append('</html>\n')
