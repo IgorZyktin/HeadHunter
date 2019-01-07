@@ -313,3 +313,25 @@ vacancy5 = {
         ]
     }
 }
+
+# vac0 = test_full_vacancy.full_vacancy
+# vac1 = test_regular_vacancy.vacancy1
+# vac2 = test_regular_vacancy.vacancy2
+# vac3 = test_regular_vacancy.vacancy3
+# vac4 = test_regular_vacancy.vacancy4
+# vac5 = test_regular_vacancy.vacancy5
+#
+# def isfloat(string):
+#     try:
+#         _ = float(string)
+#         return True
+#     except ValueError:
+#         return False
+#
+#
+# def isint(string):
+#     try:
+#         _ = int(string)
+#         return True
+#     except ValueError:
+#         return False

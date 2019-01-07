@@ -1,0 +1,7 @@
+headhunter.log
+venv
+.idea
+__pycache__
+DB
+Run main.bat
+test.html
