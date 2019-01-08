@@ -3,5 +3,6 @@ venv
 .idea
 __pycache__
 DB
-Run main.bat
-test.html
+/*.bat
+/*.html
+/Результаты
