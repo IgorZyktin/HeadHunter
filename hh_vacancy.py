@@ -51,10 +51,13 @@ class Vacancy:
         self.attr_19_addr_street = address.attr_19_addr_street
 
     def __str__(self):
-        return f'[{self.attr_01_id__}] {self.attr_07_salary_str_} {self.attr_02_name}'
+        vid = self.attr_01_id__
+        salary = str(self.attr_07_salary_str_).center(10)
+        name = self.attr_02_name
+        return f'[{vid}] {salary} {name}'
 
     def __repr__(self):
-        return f'[{self.attr_01_id__}] {self.attr_07_salary_str_} {self.attr_02_name}'
+        return self.__str__()
 
 
 class VacancyManager:
