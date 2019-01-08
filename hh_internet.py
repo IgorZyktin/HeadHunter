@@ -1,8 +1,14 @@
 # -*- coding: utf-8 -*-
+"""
+
+    Модуль взаимодействия с интернетом
+
+"""
+from xml.etree import ElementTree
 import requests
 
 
-def _request(method, parameters=None):
+def _request(method: str, parameters=None) -> dict:
     """
     Отправка запроса к API HH.ru
     """
@@ -49,3 +55,42 @@ def load_detailed(vacancy_id: int) -> dict:
     """
     result = _request(method=f'https://api.hh.ru/vacancies/{vacancy_id}')
     return result
+
+
+def get_areas() -> dict:
+    """
+        Получение с сайта словаря с кодами городов
+    """
+    result = _request(method=f'https://api.hh.ru/areas')
+    return result
+
+
+def get_course(currency: str, memory: dict = {}) -> float:
+    """
+        Получение курса валют
+    """
+    if not currency:
+        return -1.0
+
+    currency = currency.upper()
+
+    if currency not in memory:
+        request = requests.get(r'http://www.cbr.ru/scripts/XML_daily_eng.asp')
+
+        if not request:
+            print('Не удалось получить курсы валют с сайта cbr.ru')
+            return -1.0
+
+        currencies = ElementTree.fromstring(request.text)
+
+        for currency_obj in currencies:
+            name = ''
+            value = 0.0
+            for i, child in enumerate(currency_obj):
+                if i == 1:
+                    name = child.text
+                if i == 4:
+                    value = float(child.text.replace(',', '.'))
+            memory[name] = value
+
+    return memory.get(currency, -1.0)
