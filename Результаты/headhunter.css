@@ -44,6 +44,9 @@
 
 }
 
+td{
+    text-align: center;
+}
 /* Настройки страницы */
 body { 
 	margin-right: 10%;
@@ -55,7 +58,7 @@ body {
 /* Кнопка подробности */
 .button {
 	position: relative;
-    background-color: #555555;
+   	background-color: #555555;
 	border-radius: 2px;
     border: none;
     color: white;
