@@ -6,29 +6,12 @@
     Часто вречаются поля с None, пустые поля, поля с пустой строкой или нулём
 
 """
-from collections import namedtuple
-import datetime
-import math
-import time
 import re
-import json
+import math
+import datetime
+from collections import namedtuple
 
-try:
-    with open('settings.json', mode='r', encoding='utf-8') as file:
-        settings = json.load(file)
-        EUR_COURSE = settings['EUR_COURSE']
-        USD_COURSE = settings['USD_COURSE']
-except FileNotFoundError:
-    print('Не удалось найти файл с курсами валют. Приняты цены EUR 77.2, USD 67.5')
-    EUR_COURSE = 77.2
-    USD_COURSE = 67.5
-
-# try:
-#     with open('areas.json', mode='r', encoding='utf-8') as file:
-#         AREAS = json.load(file)
-# except FileNotFoundError:
-#     print('Не удалось найти файл с кодами регионов')
-#     AREAS = {}
+import hh_internet
 
 # поправка на 13% подоходного налога
 GROSS_COURSE = 0.87
@@ -38,7 +21,7 @@ GROSS_COURSE = 0.87
 attr_01_id__: int - уникальный id вакансии (заполняется в конструкторе vacancy)
 attr_02_name: str - текстовое имя вакансии (заполняется в конструкторе vacancy)
 attr_03_url_: str - гиперссылка на страницу вакансии (заполняется в конструкторе vacancy)
-        
+
 attr_04_salary_from: int | None - минимальная зарплата в килорублях
 attr_05_salary_upto: int | None - максимальная зарплата в килорублях
 attr_06_salary_avg_: int -------- средняя зарплата в килорублях или 0
@@ -55,7 +38,7 @@ attr_14_employer_name: str | None - название организации ра
 
 attr_15_time_created: float | None - время создания вакансии
 attr_16_time_publish: float | None - время публикации вакансии
-attr_17_time_dbsaved: float -------- прошлый сеанс обработки, заполнен всегда
+attr_17_time_dbsaved: float -------- время обработки
 
 attr_18_addr_city__: str | None - город работодателя
 attr_19_addr_street: str | None - улица работодателя (многие в этом поле пишут ветку метро)
@@ -115,15 +98,10 @@ def handle_salary(raw_data: dict) -> namedtuple:
             if temp['currency']:
                 _currency = temp['currency']
 
-    if _currency == 'USD':
-        scale = USD_COURSE
-    elif _currency == 'EUR':
-        scale = EUR_COURSE
-    elif _currency == 'RUR':
+    if _currency == 'RUR':
         scale = 1
     else:
-        # TODO - добавить дополнительные валюты
-        scale = -1
+        scale = hh_internet.get_course(_currency)
 
     if _gross:
         scale = scale * GROSS_COURSE
@@ -242,29 +220,13 @@ def handle_time(raw_data: dict) -> namedtuple:
     """
     Обработчик времени
     """
-    attr_17_time_dbsaved = time.time()
-    if raw_data is None:
-        return TimeClass(None, None, attr_17_time_dbsaved)
+    attr_15_time_created = raw_data.get('created_at', 'Не указано')
+    attr_15_time_created = str(attr_15_time_created)[:10]
 
-    attr_15_time_created = None
-    if 'created_at' in raw_data:
-        if raw_data['created_at']:
-            temp = raw_data['created_at']
-            try:
-                attr_15_time_created = datetime.datetime.strptime(temp, "%Y-%m-%dT%H:%M:%S+%f")
-                attr_15_time_created = attr_15_time_created.timestamp()
-            except ValueError:
-                pass
+    attr_16_time_publish = raw_data.get('published_at', 'Не указано')
+    attr_16_time_publish = str(attr_16_time_publish)[:10]
 
-    attr_16_time_publish = None
-    if 'published_at' in raw_data:
-        if raw_data['published_at']:
-            temp = raw_data['published_at']
-            try:
-                attr_16_time_publish = datetime.datetime.strptime(temp, "%Y-%m-%dT%H:%M:%S+%f")
-                attr_16_time_publish = attr_16_time_publish.timestamp()
-            except ValueError:
-                pass
+    attr_17_time_dbsaved = datetime.datetime.today().strftime('%Y-%m-%d')
 
     return TimeClass(attr_15_time_created, attr_16_time_publish, attr_17_time_dbsaved)
 
@@ -297,7 +259,10 @@ def handle_location(raw_data: dict) -> namedtuple:
     return AddressClass(attr_18_addr_city__, attr_19_addr_street)
 
 
-def is_int(something):
+def is_int(something) -> bool:
+    """
+        Проверяем, можно ли этот объект преобразовать в int
+    """
     try:
         int(something)
         return True
@@ -305,13 +270,23 @@ def is_int(something):
         return False
 
 
-def get_city_code(city_name: str):
-        return 'Москва', 1
+def get_city_code(city_name: str) -> tuple:
+    """
+        Получение кода города по его названию
+    """
+    areas = hh_internet.get_areas()
+    string = str(areas)
+    pattern = r"{'id': '\d{1,4}', 'parent_id': '\d{1,4}', 'name': '" + city_name.title() + "'"
+    city_dict = re.search(pattern, string)
 
-    # russia = AREAS[0]['areas']
-    # for region in russia:
-    #     print(region)
-    # return 'Москва', 1
+    if city_dict is not None:
+        try:
+            city_dict = eval(city_dict.group() + '}')
+            return city_dict['name'], int(city_dict['id'])
+        except ValueError:
+            pass
+
+    return 'Москва', 1
 
 
 def tokenize(input_text: str) -> tuple:
@@ -320,18 +295,26 @@ def tokenize(input_text: str) -> tuple:
     """
     text = input_text.lower()
 
-    # сначала выделяем город
+    # тело запроса
+    base = ''
+    parts = text.split(' ')
+    for part in parts:
+        if part.strip() not in ['and', 'AND', 'not', 'NOT']:
+            base += part.strip() + ' '
+        else:
+            break
+    base = base.strip()
+
+    # выделяем город
     comma_pos = input_text.rfind(',')
 
     if comma_pos != -1:
-
         raw_city_name = input_text[comma_pos + 1:]
 
         raw_city_name = raw_city_name.strip()
         raw_city_name = raw_city_name.title()
 
         city_name, city_code = get_city_code(raw_city_name)
-        city_name = city_name.title()
 
         if city_name != raw_city_name:
             print()
@@ -343,16 +326,12 @@ def tokenize(input_text: str) -> tuple:
         city_name = 'Москва'
         city_code = 1
 
-    base_pattern = r'(?<=^).*?(?=a|n|,|$)'
-    and_pattern = r'(?<=and\s).*?(?=a|n|$|,)'
-    not_pattern = r'(?<=not\s).*?(?=a|n|$|,)'
-
-    base = re.search(base_pattern, text).group()
+    and_pattern = r'(?<=and\s).*?(?=and|not|AND|NOT|$|,)'
     only_with = re.findall(and_pattern, text)
-    only_without = re.findall(not_pattern, text)
-
-    base = base.strip()
     only_with = list(map(str.strip, only_with))
+
+    not_pattern = r'(?<=not\s).*?(?=and|not|AND|NOT|$|,)'
+    only_without = re.findall(not_pattern, text)
     only_without = list(map(str.strip, only_without))
 
     return base, only_with, only_without, city_name, city_code
