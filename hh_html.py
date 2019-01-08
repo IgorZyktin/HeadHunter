@@ -7,12 +7,10 @@
 import operator
 
 
-def generate_html(vacancies):
+def generate_html(keyword: str, vacancies: dict) -> list:
     """
     Генерация файла с короткими описаниями вакансий
     """
-    html = list()
-
     header1 = """
     <!DOCTYPE html>
     <html>
@@ -34,10 +32,12 @@ def generate_html(vacancies):
 
     header2 = """
     <div class="header">
-    <h1>Вакансий в списке: {0}</h1>
+    <h1><b>{0}</b></h1>
+    <h2>Вакансий в списке: {1}</h2>
     </div>
-    """.format(len(vacancies))
+    """.format(keyword, len(vacancies))
 
+    html = list()
     html.extend(header1)
     html.extend(header2)
 
@@ -47,26 +47,40 @@ def generate_html(vacancies):
         else:
             text = vacancy.attr_11_short_descr
 
-        if vacancy.attr_08_experience_:
-            experience = vacancy.attr_08_experience_
-        else:
-            experience = ''
-
+        experience = vacancy.attr_08_experience_
         vac_id = vacancy.attr_01_id__
         url = vacancy.attr_03_url_
         name = vacancy.attr_02_name
         salary = vacancy.attr_07_salary_str_
 
-        info = """ 
+        info = """
         <div class="vacancy_short">
-        <button class="button button1" onclick="openbox({0}); return false">Подробности</button>
-        <b>[{0}]</b> {5} - {3} <a href="{1}">{2}</a>
-        <div id="{0}" style="display:none;" class="descr">
-        {4}
-        <br>
+        
+        <table border=0 width="100%">
+        <tr>
+        <td width="15%"><button class="button button1" onclick="openbox({id}); return false">
+        Подробности</button></td>
+        <td width="10%"><b>{id}</b></td>
+        <td width="15%">{exp}</td>
+        <td width="15%">{salary}</td>
+        <td style="text-align:left"><a href="{url}">{name}</a></td></td>
+        </tr>
+        </table>
+        
+        <div id="{id}" style="display:none;" class="descr">{text}<br>
         </div></div>
-        """.format(vac_id, url, name, salary, text, experience)
+        """.format(id=vac_id, url=url, name=name, salary=salary, text=text, exp=experience)
         html.extend(info)
     html.append('</body>\n')
     html.append('</html>\n')
     return html
+
+
+def save_html(keyword: str, path: str, data: dict):
+    """
+        Сохранение результатов в HTML
+    """
+    html_document = generate_html(keyword, data)
+    with open(path, mode='w', encoding='utf-8') as file:
+        for line in html_document:
+            file.write(line)
