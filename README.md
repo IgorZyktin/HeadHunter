@@ -7,6 +7,9 @@
 два файла: удобную для чтения страницу HTML (открывается браузером) и удобную
 для анализа форму XLS (открывается MS Excel).
 
+Собранную программу можно скачать здесь:<br>
+    https://yadi.sk/d/-dGkT0vAtookNw
+
 Пример запроса:
 <br>
 ![alt text](https://github.com/IgorZyktin/HeadHunter/blob/master/preview_1.png "")
