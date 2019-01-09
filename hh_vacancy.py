@@ -5,6 +5,7 @@
 
 """
 import os
+import time
 from colorama import Fore, init
 
 import hh_handlers
@@ -51,10 +52,8 @@ class Vacancy:
         self.attr_19_addr_street = address.attr_19_addr_street
 
     def __str__(self):
-        vid = self.attr_01_id__
         salary = str(self.attr_07_salary_str_).center(10)
-        name = self.attr_02_name
-        return f'[{vid}] {salary} {name}'
+        return f'[{self.attr_01_id__}] {salary} {self.attr_02_name}'
 
     def __repr__(self):
         return self.__str__()
@@ -110,8 +109,9 @@ class VacancyManager:
         if not total:
             print('\r' + Fore.RED + f'\tБыли забракованы все найденные вакансии.')
             return
-        else:
-            print('\r' + Fore.GREEN + f'\tНайдено {total} вакансий.')
+
+        print('\r' + Fore.LIGHTGREEN_EX + f'\tНайдено {total} вакансий.')
+        print('\t' + Fore.LIGHTGREEN_EX + '-' * 60)
 
         digits = len(str(total))
         for i, each in enumerate(self._memory.values(), start=1):
@@ -119,7 +119,6 @@ class VacancyManager:
 
             if total > 10:
                 if i == 1:
-                    print()
                     print(Fore.LIGHTGREEN_EX + '\tПервые пять:')
 
                 if i in [1, 2, 3, 4, 5]:
@@ -148,13 +147,18 @@ class VacancyManager:
 
         if not total:
             return
-
+        start = time.time()
         print('\tЗапрашиваем подробости для {} вакансий...'.format(total), end='')
+
         for i, each_id in enumerate(self._memory, start=1):
             raw_detailed = hh_internet.load_detailed(each_id)
             Vacancy.__init__(self._memory[each_id], raw_detailed)
-            print('\r\tОбработано вакансий: {} из {}'.format(i, total), end='')
-        print('\r\t{} вакансий успешно обработано.'.format(total))
+            percent = (i / total) * 100
+            print('\r                                                                 ', end='')
+            print('\r\tОбработано вакансий: {:3d} из {:3d} ({:.2f}%)'.format(i, total, percent), end='')
+
+        spent = time.time() - start
+        print('\r\t{:3d} вакансий успешно обработано (времени ушло: {:.2f} сек.)'.format(total, spent))
 
     def purge_with(self, words: list):
         """
@@ -214,15 +218,22 @@ class VacancyManager:
             try:
                 os.mkdir(save_dir)
             except OSError:
-                print('Невозможно создать каталог для сохранения результатов:', save_dir)
+                print(Fore.RED + 'Невозможно создать каталог для сохранения результатов:', save_dir)
                 return
 
         name_html = os.path.join(save_dir, self.keyword + '.html')
-        hh_html.save_html(self.keyword, name_html, self._memory)
+        saved_html = hh_html.save_html(self.keyword, name_html, self._memory)
 
         name_xls = os.path.join(save_dir, self.keyword + '.xls')
-        hh_excel.save_xls(name_xls, self._memory)
+        saved_xls = hh_excel.save_xls(name_xls, self._memory)
 
-        print('\t' + Fore.LIGHTGREEN_EX + 'Результаты поиска сохранены в файлах:')
-        print('\t1. {}'.format(name_html))
-        print('\t2. {}'.format(name_xls))
+        if saved_html or saved_xls:
+            print('\t' + Fore.LIGHTGREEN_EX + 'Результаты поиска сохранены:')
+        else:
+            print('\t' + Fore.RED + 'Результаты поиска не удалось сохранить.')
+
+        if saved_html:
+            print(Fore.LIGHTGREEN_EX + '\t> {}'.format(name_html))
+
+        if saved_xls:
+            print(Fore.LIGHTGREEN_EX + '\t> {}'.format(name_xls))
