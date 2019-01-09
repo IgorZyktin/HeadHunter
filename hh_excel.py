@@ -14,16 +14,17 @@ def remove_tags(input_text: str) -> str:
         Удаление HTML тегов из текста
     """
     html_pattern = r'<.*?>'
+
     result = re.sub(html_pattern, '', input_text)
     return result
 
 
-def save_xls(path: str, data: dict):
+def save_xls(path: str, data: dict) -> bool:
     """
         Сохранения XLS файла
     """
     if not data or not path:
-        return
+        return False
 
     book = xlwt.Workbook()
     sheet = book.add_sheet('HH Result')
@@ -93,15 +94,19 @@ def save_xls(path: str, data: dict):
 
     try:
         book.save(path)
+        return True
+
     except PermissionError:
         print()
         print(Fore.RED + '\tНевозможно перезаписать файл:')
         print('\t', Fore.RED + path)
         print(Fore.RED + '\tВозможно документ открыт в другой программе.')
         print()
-        return
+
     except OSError:
         print()
         print(Fore.RED + '\tНевозможно сохранить файл:')
         print('\t', Fore.RED + path)
         print()
+
+    return False
