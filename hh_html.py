@@ -5,6 +5,8 @@
 
 """
 import operator
+from colorama import Fore, init
+init(autoreset=True)
 
 
 def generate_html(keyword: str, vacancies: dict) -> list:
@@ -12,36 +14,36 @@ def generate_html(keyword: str, vacancies: dict) -> list:
     Генерация файла с короткими описаниями вакансий
     """
     header1 = """
-    <!DOCTYPE html>
-    <html>
-    <link href="headhunter.css" rel="stylesheet">
-    <script type="text/javascript">
+<!DOCTYPE html>
+<html>
+<link href="headhunter.css" rel="stylesheet">
+<script type="text/javascript">
+function openbox(id){
+    display = document.getElementById(id).style.display;
 
-    function openbox(id){
-        display = document.getElementById(id).style.display;
-
-        if(display=='none'){
-           document.getElementById(id).style.display='block';
-        }else{
-           document.getElementById(id).style.display='none';
-        }
+    if(display=='none'){
+       document.getElementById(id).style.display='block';
+    }else{
+       document.getElementById(id).style.display='none';
     }
-    </script>
-    <body>
+}
+</script>
+<body>
     """
 
     header2 = """
-    <div class="header">
-    <h1><b>{0}</b></h1>
-    <h2>Вакансий в списке: {1}</h2>
-    </div>
+<div class="header">
+<h1><b>{0}</b></h1>
+<h2>Вакансий в списке: {1}</h2>
+</div>
     """.format(keyword, len(vacancies))
 
     html = list()
     html.extend(header1)
     html.extend(header2)
 
-    for vacancy in sorted(vacancies.values(), key=operator.attrgetter('attr_06_salary_avg_')):
+    for vacancy in sorted(vacancies.values(),
+                          key=operator.attrgetter('attr_06_salary_avg_')):
         if vacancy.attr_10_description:
             text = vacancy.attr_10_description
         else:
@@ -54,21 +56,20 @@ def generate_html(keyword: str, vacancies: dict) -> list:
         salary = vacancy.attr_07_salary_str_
 
         info = """
-        <div class="vacancy_short">
-        
-        <table border=0 width="100%">
-        <tr>
-        <td width="15%"><button class="button button1" onclick="openbox({id}); return false">
-        Подробности</button></td>
-        <td width="10%"><b>{id}</b></td>
-        <td width="15%">{exp}</td>
-        <td width="15%">{salary}</td>
-        <td style="text-align:left"><a href="{url}">{name}</a></td></td>
-        </tr>
-        </table>
-        
-        <div id="{id}" style="display:none;" class="descr">{text}<br>
-        </div></div>
+<div class="vacancy_short">
+    <table border=0 width="100%">
+    <tr>
+    <td width="15%"><button class="button button1" onclick="openbox({id}); return false">Подробности</button></td>
+    <td width="10%"><b>{id}</b></td>
+    <td width="15%">{exp}</td>
+    <td width="15%">{salary}</td>
+    <td style="text-align:left"><a href="{url}">{name}</a></td>
+    </tr>
+    </table>
+    <div id="{id}" style="display:none;" class="descr">
+    {text}
+    </div>
+</div>
         """.format(id=vac_id, url=url, name=name, salary=salary, text=text, exp=experience)
         html.extend(info)
     html.append('</body>\n')
@@ -76,11 +77,32 @@ def generate_html(keyword: str, vacancies: dict) -> list:
     return html
 
 
-def save_html(keyword: str, path: str, data: dict):
+def save_html(keyword: str, path: str, data: dict) -> bool:
     """
         Сохранение результатов в HTML
     """
+    if not keyword or not path or not data:
+        return False
+
     html_document = generate_html(keyword, data)
-    with open(path, mode='w', encoding='utf-8') as file:
-        for line in html_document:
-            file.write(line)
+
+    try:
+        with open(path, mode='w', encoding='utf-8') as file:
+            for line in html_document:
+                file.write(line)
+        return True
+
+    except PermissionError:
+        print()
+        print(Fore.RED + '\tНевозможно перезаписать файл:')
+        print('\t', Fore.RED + path)
+        print(Fore.RED + '\tВозможно документ открыт в другой программе.')
+        print()
+
+    except OSError:
+        print()
+        print(Fore.RED + '\tНевозможно сохранить файл:')
+        print('\t', Fore.RED + path)
+        print()
+
+    return False
