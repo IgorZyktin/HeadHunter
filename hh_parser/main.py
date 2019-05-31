@@ -13,7 +13,7 @@ init(autoreset=True)
 
 def greetings():
     """
-        Вывод стартового текста
+    Вывод стартового текста
     """
     print()
     print(Fore.LIGHTBLUE_EX + ' HeadHunter '.center(79, '~'))
@@ -29,7 +29,7 @@ def greetings():
 
 def main():
     """
-        Главная функция
+    Главная функция
     """
     greetings()
     while True:

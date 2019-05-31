@@ -65,6 +65,7 @@ def get_areas() -> dict:
     return result
 
 
+# noinspection PyDefaultArgument
 def get_course(currency: str, memory: dict = {}) -> float:
     """
         Получение курса валют

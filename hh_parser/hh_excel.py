@@ -11,7 +11,7 @@ init(autoreset=True)
 
 def remove_tags(input_text: str) -> str:
     """
-        Удаление HTML тегов из текста
+    Удаление HTML тегов из текста
     """
     html_pattern = r'<.*?>'
 
@@ -21,7 +21,7 @@ def remove_tags(input_text: str) -> str:
 
 def save_xls(path: str, data: dict) -> bool:
     """
-        Сохранения XLS файла
+    Сохранения XLS файла
     """
     if not data or not path:
         return False

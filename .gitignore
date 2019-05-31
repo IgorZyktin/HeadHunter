@@ -1,10 +1,6 @@
-headhunter.log
 venv
 .idea
 __pycache__
-DB
 /*.bat
 /*.html
 /*.xls
-/Результаты/*.html
-/Результаты/*.xls

@@ -4,14 +4,11 @@
     В этом модуле находится класс вакансии и его управляющий класс
 
 """
-import os
 import time
 from colorama import Fore, init
 
-import hh_handlers
-import hh_internet
-import hh_html
-import hh_excel
+import hh_handlers, hh_internet, hh_excel, hh_html
+
 init(autoreset=True)
 
 
@@ -213,19 +210,8 @@ class VacancyManager:
         if not self._memory:
             return
 
-        save_dir = os.path.join(os.getcwd(), 'Результаты')
-        if not os.path.exists(save_dir):
-            try:
-                os.mkdir(save_dir)
-            except OSError:
-                print(Fore.RED + 'Невозможно создать каталог для сохранения результатов:', save_dir)
-                return
-
-        name_html = os.path.join(save_dir, self.keyword + '.html')
-        saved_html = hh_html.save_html(self.keyword, name_html, self._memory)
-
-        name_xls = os.path.join(save_dir, self.keyword + '.xls')
-        saved_xls = hh_excel.save_xls(name_xls, self._memory)
+        saved_html = hh_html.save_html(self.keyword, self.keyword + '.html', self._memory)
+        saved_xls = hh_excel.save_xls(self.keyword + '.xls', self._memory)
 
         if saved_html or saved_xls:
             print('\t' + Fore.LIGHTGREEN_EX + 'Результаты поиска сохранены:')
@@ -233,7 +219,7 @@ class VacancyManager:
             print('\t' + Fore.RED + 'Результаты поиска не удалось сохранить.')
 
         if saved_html:
-            print(Fore.LIGHTGREEN_EX + '\t> {}'.format(name_html))
+            print(Fore.LIGHTGREEN_EX + '\t> {}'.format(self.keyword + '.html'))
 
         if saved_xls:
-            print(Fore.LIGHTGREEN_EX + '\t> {}'.format(name_xls))
+            print(Fore.LIGHTGREEN_EX + '\t> {}'.format(self.keyword + '.xls'))
